@@ -28,7 +28,7 @@ class Car(models.Model):
     def __str__(self):
         return self.title
     
-# models.py
+
 
 class CarImage(models.Model):
     car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name="images")
