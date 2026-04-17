@@ -43,7 +43,7 @@ class UserProfileView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        user = request.user   # ✅ FIXED
+        user = request.user
 
         kyc = KYC.objects.filter(user=user).first()
 
@@ -58,7 +58,11 @@ class UserProfileView(APIView):
         })
 
     def put(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = UserSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
 
         if serializer.is_valid():
             serializer.save()

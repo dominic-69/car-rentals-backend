@@ -2,11 +2,14 @@ from rest_framework import generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
 from django.db import IntegrityError
 
 from .models import Car, CarImage
 from .serializers import CarSerializer
 from .permissions import IsSeller, IsOwner
+
+from apps.rental.utils import is_car_available  # 🔥 IMPORTANT
 
 import cloudinary.uploader
 
@@ -37,20 +40,21 @@ class CreateCarView(APIView):
                 location=data.get("location"),
                 registration_number=data.get("registration_number"),
                 description=data.get("description"),
+                fuel_type=data.get("fuel_type", "Petrol"),
+                transmission=data.get("transmission", "Manual"),
+                seats=data.get("seats", 4),
             )
         except IntegrityError:
             return Response({
                 "error": "Registration number already exists ❌"
             }, status=400)
 
-        # 🔥 GET IMAGES
+        # 🔥 HANDLE IMAGES
         images = request.FILES.getlist("images")
 
-        # ✅ LIMIT CHECK
         if len(images) > 5:
             return Response({"error": "Maximum 5 images allowed ❌"}, status=400)
 
-        # ✅ UPLOAD
         for img in images:
             upload = cloudinary.uploader.upload(img)
             CarImage.objects.create(
@@ -109,7 +113,7 @@ class CarUpdateView(APIView):
 
         data = request.data
 
-        # ✅ DUPLICATE CHECK (EXCLUDE CURRENT CAR)
+        # ✅ DUPLICATE CHECK
         if Car.objects.filter(
             registration_number=data.get("registration_number")
         ).exclude(id=car.id).exists():
@@ -118,13 +122,15 @@ class CarUpdateView(APIView):
             }, status=400)
 
         try:
-            # ✅ UPDATE FIELDS
             car.title = data.get("title", car.title)
             car.brand = data.get("brand", car.brand)
             car.price = data.get("price", car.price)
             car.location = data.get("location", car.location)
             car.registration_number = data.get("registration_number", car.registration_number)
             car.description = data.get("description", car.description)
+            car.fuel_type = data.get("fuel_type", car.fuel_type)
+            car.transmission = data.get("transmission", car.transmission)
+            car.seats = data.get("seats", car.seats)
 
             car.save()
 
@@ -137,14 +143,11 @@ class CarUpdateView(APIView):
         images = request.FILES.getlist("images")
 
         if images:
-            # ✅ LIMIT CHECK
             if len(images) > 5:
                 return Response({"error": "Maximum 5 images allowed ❌"}, status=400)
 
-            # 🔥 REMOVE OLD IMAGES
             CarImage.objects.filter(car=car).delete()
 
-            # 🔥 UPLOAD NEW
             for img in images:
                 upload = cloudinary.uploader.upload(img)
                 CarImage.objects.create(
@@ -163,3 +166,36 @@ class CarDeleteView(generics.DestroyAPIView):
     serializer_class = CarSerializer
     permission_classes = [IsAuthenticated, IsOwner]
     lookup_field = "id"
+
+
+# =========================
+# 🔥 SEARCH CARS (WITH AVAILABILITY)
+# =========================
+@api_view(["GET"])
+def search_cars(request):
+    max_price = request.GET.get("max_price")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    cars = Car.objects.filter(is_available=True)
+
+    if max_price:
+        cars = cars.filter(price__lte=max_price)
+
+    data = []
+
+    for car in cars:
+        # 🔥 CHECK AVAILABILITY
+        if start_date and end_date:
+            if not is_car_available(car, start_date, end_date):
+                continue
+
+        data.append({
+            "id": car.id,
+            "title": car.title,
+            "price": float(car.price),
+            "fuel": car.fuel_type,
+            "location": car.location,
+        })
+
+    return Response(data)

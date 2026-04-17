@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'apps.users',
     'apps.cars',
-    # 'apps.rental',
+    'apps.orders',
+    'apps.rental',
     'apps.kyc',
     'apps.chat',
     'apps.sales',
@@ -180,3 +181,11 @@ cloudinary.config(
     api_key="854385494215471",
     api_secret="QgR-koGGk9-24_cXsNp1UPtw6_I"
 )
+
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")

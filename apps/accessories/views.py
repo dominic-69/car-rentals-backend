@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Accessory, AccessoryImage
 from .serializers import AccessorySerializer
+from .permissions import IsSeller
 
 import cloudinary.uploader
 
@@ -13,7 +14,7 @@ import cloudinary.uploader
 # 🔥 CREATE ACCESSORY
 # =========================
 class CreateAccessoryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSeller]
 
     def post(self, request):
         data = request.data
@@ -49,7 +50,7 @@ class CreateAccessoryView(APIView):
 # =========================
 class MyAccessoriesView(generics.ListAPIView):
     serializer_class = AccessorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSeller]
 
     def get_queryset(self):
         return Accessory.objects.filter(seller=self.request.user)
@@ -59,11 +60,16 @@ class MyAccessoriesView(generics.ListAPIView):
 # 🔥 ALL ACCESSORIES (USER)
 # =========================
 class AccessoryListView(generics.ListAPIView):
-    queryset = Accessory.objects.filter(is_approved=True)
     serializer_class = AccessorySerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_queryset(self):
+        user = self.request.user
 
+        if user.is_authenticated and user.role == "admin":
+            return Accessory.objects.all()
+
+        return Accessory.objects.filter(is_approved=True)
 # =========================
 # 🔥 DETAIL
 # =========================
@@ -78,7 +84,7 @@ class AccessoryDetailView(generics.RetrieveAPIView):
 # 🔥 UPDATE ACCESSORY
 # =========================
 class AccessoryUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSeller]
 
     def put(self, request, id):
         try:
@@ -86,6 +92,7 @@ class AccessoryUpdateView(APIView):
         except Accessory.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
 
+        # 🔐 OWNER CHECK
         if accessory.seller != request.user:
             return Response({"error": "Unauthorized"}, status=403)
 
@@ -97,6 +104,9 @@ class AccessoryUpdateView(APIView):
         accessory.stock = data.get("stock", accessory.stock)
         accessory.description = data.get("description", accessory.description)
         accessory.category = data.get("category", accessory.category)
+
+        # 🔥 REQUIRE RE-APPROVAL AFTER EDIT
+        accessory.is_approved = False
 
         accessory.save()
 
@@ -120,13 +130,23 @@ class AccessoryUpdateView(APIView):
 
 
 # =========================
-# 🔥 DELETE
+# 🔥 DELETE ACCESSORY
 # =========================
-class AccessoryDeleteView(generics.DestroyAPIView):
-    queryset = Accessory.objects.all()
-    serializer_class = AccessorySerializer
-    permission_classes = [IsAuthenticated]
-    lookup_field = "id"
+class AccessoryDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsSeller]
+
+    def delete(self, request, id):
+        try:
+            accessory = Accessory.objects.get(id=id)
+        except Accessory.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
+        # 🔐 OWNER CHECK
+        if accessory.seller != request.user:
+            return Response({"error": "Unauthorized"}, status=403)
+
+        accessory.delete()
+        return Response({"message": "Deleted ✅"})
 
 
 # =========================
@@ -136,7 +156,15 @@ class ApproveAccessoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, id):
-        accessory = Accessory.objects.get(id=id)
+        if request.user.role != "admin":
+            return Response({"error": "Unauthorized ❌"}, status=403)
+
+        try:
+            accessory = Accessory.objects.get(id=id)
+        except Accessory.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
         accessory.is_approved = True
         accessory.save()
+
         return Response({"message": "Approved ✅"})

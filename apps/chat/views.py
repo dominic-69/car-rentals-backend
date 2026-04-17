@@ -5,6 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Chat, Message
 from .serializers import MessageSerializer
 
+from .utils import call_fastapi   # ✅ using FastAPI
+from .services import smart_car_search
+
 
 # =========================
 # 🔥 CREATE OR GET CHAT
@@ -15,7 +18,6 @@ class GetOrCreateChatView(APIView):
     def post(self, request):
         user = request.user
 
-        # 🔥 find admin
         admin = user.__class__.objects.filter(role="admin").first()
 
         chat, created = Chat.objects.get_or_create(
@@ -34,12 +36,38 @@ class SendMessageView(APIView):
 
     def post(self, request, chat_id):
         text = request.data.get("text")
+        user = request.user
 
-        message = Message.objects.create(
+        # ✅ Save user/admin/seller message
+        Message.objects.create(
             chat_id=chat_id,
-            sender=request.user,
+            sender=user,
             text=text
         )
+
+        # 🔥 ONLY APPLY AI FOR NORMAL USER
+        if user.role == "user":
+
+            # 🔥 Call FastAPI
+            reply = call_fastapi(text)
+
+            # 🔁 fallback if FastAPI fails
+            if not reply:
+                cars = smart_car_search(text)
+
+                if cars:
+                    reply = "Here are some cars:\n"
+                    for car in cars:
+                        reply += f"{car.title} - ₹{car.price}\n"
+                else:
+                    reply = "No cars found 😔"
+
+            # ✅ Save AI reply
+            Message.objects.create(
+                chat_id=chat_id,
+                sender=user,  # later we can replace with bot user
+                text=reply
+            )
 
         return Response({"message": "Sent ✅"})
 
@@ -64,14 +92,12 @@ class AdminChatListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # 🔐 ONLY ADMIN
         if request.user.role != "admin":
             return Response({"error": "Unauthorized ❌"}, status=403)
 
         chats = Chat.objects.all().order_by("-created_at")
 
         data = []
-
         for chat in chats:
             data.append({
                 "chat_id": chat.id,

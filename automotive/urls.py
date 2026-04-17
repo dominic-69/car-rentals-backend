@@ -1,13 +1,17 @@
+from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('api/', include('apps.users.urls')),
-    path('api/', include('apps.cars.urls')),
-    path('api/', include('apps.kyc.urls')),  
-    path("api/", include("apps.accessories.urls")),
-    path("api/", include("apps.chat.urls")),# 🔥 VERY IMPORTANT
+    path('admin/', admin.site.urls),
+
+    path('api/auth/', include('apps.users.urls')),
+    path('api/cars/', include('apps.cars.urls')),
+    path('api/kyc/', include('apps.kyc.urls')),
+    path('api/accessories/', include('apps.accessories.urls')),
+    path('api/chat/', include('apps.chat.urls')),
+    path('api/rental/', include('apps.rental.urls')),
 ]
 
 if settings.DEBUG:
