@@ -1,42 +1,30 @@
-import requests
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# ✅ FIXED CORS (IMPORTANT)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],  # ✅ DO NOT use "*" with credentials
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class Query(BaseModel):
-    message: str
+# ✅ CHATBOT ROUTE
+@app.post("/chatbot")
+async def chatbot(data: dict):
+    message = data.get("message", "").lower()
 
-
-@app.post("/ai/chat/")
-def ai_chat(data: Query):
-    msg = data.message.lower()
-
-    # 🔥 Extract price
-    if "5 lakh" in msg:
-        max_price = 500000
-    elif "3 lakh" in msg:
-        max_price = 300000
+    if "cheap" in message:
+        return {"reply": "Try Alto, Swift, i10 🚗"}
+    elif "suv" in message:
+        return {"reply": "Check Creta, Nexon, XUV300 🚙"}
+    elif "car" in message:
+        return {"reply": "We have SUV, Sedan, Hatchback 🚗"}
     else:
-        return {"reply": "Please specify budget "}
-
-    # 🔥 Call Django API
-    try:
-        res = requests.get(
-            f"http://127.0.0.1:8000/api/cars/search/?max_price={max_price}"
-        )
-        cars = res.json()
-
-        if not cars:
-            return {"reply": "No cars found 😔"}
-
-        # format response
-        result = "Here are cars:\n"
-        for car in cars[:5]:
-            result += f"{car['title']} - ₹{car['price']}\n"
-
-        return {"reply": result}
-
-    except Exception as e:
-        return {"reply": "Server error 😔"}
+        return {"reply": "Tell me your budget 😊"}

@@ -10,5 +10,5 @@ urlpatterns = [
     path("<int:id>/update/", AccessoryUpdateView.as_view()),
     path("<int:id>/delete/", AccessoryDeleteView.as_view()),
 
-    path("admin/<int:id>/approve/", ApproveAccessoryView.as_view()),
+path("admin/<int:id>/approve/", ApproveAccessoryView.as_view())
 ]

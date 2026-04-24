@@ -12,12 +12,32 @@ class Booking(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
 
+    # 💰 PRICE
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    # 📦 BOOKING STATUS
     status = models.CharField(
         max_length=20,
         choices=[
             ("pending", "Pending"),
             ("confirmed", "Confirmed"),
             ("cancelled", "Cancelled"),
+        ],
+        default="pending"
+    )
+
+    # 💳 PAYMENT STATUS
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "Pending"),
+            ("paid", "Paid"),
+            ("failed", "Failed"),
         ],
         default="pending"
     )

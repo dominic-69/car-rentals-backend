@@ -10,6 +10,10 @@ urlpatterns = [
     path('api/cars/', include('apps.cars.urls')),
     path('api/kyc/', include('apps.kyc.urls')),
     path('api/accessories/', include('apps.accessories.urls')),
+
+    # ✅ FIXED HERE
+    path('api/cart/', include('apps.orders.urls')),
+
     path('api/chat/', include('apps.chat.urls')),
     path('api/rental/', include('apps.rental.urls')),
 ]
