@@ -26,7 +26,7 @@ ALLOWED_HOSTS = []
 # 🔥 APPLICATIONS
 # =========================
 INSTALLED_APPS = [
-    'daphne',  # 🔥 MUST BE FIRST
+    'daphne',  # 🔥 for channels
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.chat',
     'apps.sales',
     'apps.accessories',
+    "apps.notifications",
 
     'corsheaders',
     'channels',
@@ -70,13 +71,9 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'automotive.urls'
 
 WSGI_APPLICATION = 'automotive.wsgi.application'
+ASGI_APPLICATION = "automotive.asgi.application"
 
-# ✅ 🔥 FIXED (IMPORTANT)
-ASGI_APPLICATION = 'automotive.asgi.application'
-
-# =========================
-# 🔥 CHANNELS CONFIG
-# =========================
+# 🔥 FIXED CHANNEL LAYER (ONLY ONE)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -186,9 +183,7 @@ cloudinary.config(
 )
 
 # =========================
-# 🤖 AI KEY
+# 💳 RAZORPAY
 # =========================
-# OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 RAZORPAY_KEY_ID = "rzp_test_Sg7JEq3JdVsjLK"
-RAZORPAY_KEY_SECRET = "Z0poo4BipmVFvGoAjcL31mjK" 
+RAZORPAY_KEY_SECRET = "Z0poo4BipmVFvGoAjcL31mjK"

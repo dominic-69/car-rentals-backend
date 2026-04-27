@@ -15,4 +15,5 @@ urlpatterns = [
     path("admin/users/", AdminUserListView.as_view()),
     path("admin/users/<int:id>/block/", BlockUserView.as_view()),
     path("admin/users/<int:id>/unblock/", UnblockUserView.as_view()),
+    path("admin/users/<int:id>/", AdminUserDetailView.as_view()),
 ]

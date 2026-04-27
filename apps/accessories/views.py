@@ -132,8 +132,11 @@ class AccessoryUpdateView(APIView):
 # =========================
 # 🔥 DELETE ACCESSORY
 # =========================
+ # =========================
+# 🔥 DELETE ACCESSORY
+# =========================
 class AccessoryDeleteView(APIView):
-    permission_classes = [IsAuthenticated, IsSeller]
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, id):
         try:
@@ -141,12 +144,17 @@ class AccessoryDeleteView(APIView):
         except Accessory.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
 
-        # 🔐 OWNER CHECK
-        if accessory.seller != request.user:
-            return Response({"error": "Unauthorized"}, status=403)
+        # ✅ ALLOW ADMIN
+        if request.user.role == "admin":
+            accessory.delete()
+            return Response({"message": "Deleted by admin ✅"})
 
-        accessory.delete()
-        return Response({"message": "Deleted ✅"})
+        # ✅ ALLOW OWNER (SELLER)
+        if accessory.seller == request.user:
+            accessory.delete()
+            return Response({"message": "Deleted ✅"})
+
+        return Response({"error": "Unauthorized ❌"}, status=403)
 
 
 # =========================

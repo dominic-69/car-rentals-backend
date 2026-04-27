@@ -237,3 +237,30 @@ class UnblockUserView(APIView):
         user.save()
 
         return Response({"message": "User unblocked"})
+    
+# ================= ADMIN USER DETAIL =================
+class AdminUserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        if request.user.role != "admin":
+            return Response({"error": "Not allowed"}, status=403)
+
+        try:
+            user = User.objects.get(id=id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+
+        kyc = KYC.objects.filter(user=user).first()
+
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "phone": user.phone,
+            "address": user.address,
+            "profile_image": user.profile_image.url if user.profile_image else None,
+            "kyc_status": kyc.status if kyc else "not_submitted",
+            "is_blocked": user.is_blocked,
+        })

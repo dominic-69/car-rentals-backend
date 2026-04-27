@@ -12,26 +12,29 @@ class Booking(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
 
-    # 💰 PRICE
-    total_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
+    # 🕐 NEW TIME FIELDS
+    pickup_time = models.TimeField(null=True, blank=True)
+    return_time = models.TimeField(null=True, blank=True)
 
-    # 📦 BOOKING STATUS
+    actual_return_time = models.DateTimeField(null=True, blank=True)
+
+    # 💰 PRICE
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    # 💸 FINE
+    fine_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
     status = models.CharField(
         max_length=20,
         choices=[
             ("pending", "Pending"),
             ("confirmed", "Confirmed"),
+            ("completed", "Completed"),
             ("cancelled", "Cancelled"),
         ],
         default="pending"
     )
 
-    # 💳 PAYMENT STATUS
     payment_status = models.CharField(
         max_length=20,
         choices=[
@@ -45,4 +48,4 @@ class Booking(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} - {self.car} ({self.start_date} to {self.end_date})"
+        return f"{self.user} - {self.car}"
