@@ -2,18 +2,14 @@ from rest_framework import serializers
 from .models import Car, CarImage
 
 
-# =========================
-# 🖼 CAR IMAGE SERIALIZER
-# =========================
+# image 
 class CarImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = CarImage
         fields = ["id", "image"]
 
 
-# =========================
-# 🚗 CAR SERIALIZER
-# =========================
+#   
 class CarSerializer(serializers.ModelSerializer):
     images = CarImageSerializer(many=True, read_only=True)
     seller = serializers.SerializerMethodField()

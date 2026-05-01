@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view
 from django.db import IntegrityError
+from django.db.models import Avg
 
 from .models import Car, CarImage
 from .serializers import CarSerializer
@@ -12,23 +13,9 @@ from .permissions import IsSeller, IsOwner
 from apps.rental.utils import is_car_available
 
 import cloudinary.uploader
-
-
-# =========================
-# 🔥 CREATE CAR (SELLER → RENTAL)
-# =========================
-\
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import Car, CarImage
-from .permissions import IsSeller
-import cloudinary.uploader
 import requests
 
-
-# 🌍 FUNCTION: LOCATION → LAT/LNG
+# Function: Location to Lat/Lng
 def get_lat_lng(location):
     try:
         url = "https://nominatim.openstreetmap.org/search"
@@ -51,8 +38,7 @@ def get_lat_lng(location):
 
     return None, None
 
-
-# 🚗 CREATE CAR VIEW
+# Create Car View
 class CreateCarView(APIView):
     permission_classes = [IsAuthenticated, IsSeller]
 
@@ -60,13 +46,13 @@ class CreateCarView(APIView):
         data = request.data
 
         try:
-            # 🚨 DUPLICATE CHECK
+            # Duplicate check
             if Car.objects.filter(
                 registration_number=data.get("registration_number")
             ).exists():
                 return Response({"error": "Car already exists ❌"}, status=400)
 
-            # 📍 LAT/LNG FROM FRONTEND (if available)
+            # Lat/Lng from frontend
             latitude = data.get("latitude")
             longitude = data.get("longitude")
 
@@ -77,7 +63,7 @@ class CreateCarView(APIView):
                 latitude = None
                 longitude = None
 
-            # 🔥 AUTO CONVERT LOCATION → LAT/LNG
+            # Auto convert location to Lat/Lng
             if not latitude or not longitude:
                 lat, lng = get_lat_lng(data.get("location"))
 
@@ -85,7 +71,7 @@ class CreateCarView(APIView):
                     latitude = lat
                     longitude = lng
 
-            # 🔢 SAFE NUMBERS
+            # Safe numbers
             try:
                 price = float(data.get("price", 0))
             except:
@@ -96,7 +82,7 @@ class CreateCarView(APIView):
             except:
                 seats = 4
 
-            # 🚗 CREATE CAR
+            # Create car object
             car = Car.objects.create(
                 owner=request.user,
                 title=data.get("title"),
@@ -114,7 +100,7 @@ class CreateCarView(APIView):
                 car_type="rental"
             )
 
-            # 📸 HANDLE IMAGES (Cloudinary)
+            # Handle images
             images = request.FILES.getlist("images")
 
             if len(images) > 5:
@@ -141,9 +127,7 @@ class CreateCarView(APIView):
             print("FINAL ERROR:", str(e))
             return Response({"error": str(e)}, status=500)
 
-# =========================
-# 🔥 SELLER → MY CARS
-# =========================
+# Seller - My Cars
 class MyCarsView(generics.ListAPIView):
     serializer_class = CarSerializer
     permission_classes = [IsAuthenticated]
@@ -151,24 +135,18 @@ class MyCarsView(generics.ListAPIView):
     def get_queryset(self):
         return Car.objects.filter(owner=self.request.user)
 
-
-# =========================
-# 🔥 RENTAL PAGE (HOME)
-# =========================
+# Rental Page Home
 class CarListView(APIView):
     def get(self, request):
         cars = Car.objects.filter(
             status="approved",
-            car_type="rental"   # 🔥 STRICT FILTER
+            car_type="rental"
         ).order_by("-created_at")
 
         serializer = CarSerializer(cars, many=True)
         return Response(serializer.data)
 
-
-# =========================
-# 🔥 CAR DETAIL
-# =========================
+# Car Detail
 class CarDetailView(APIView):
     def get(self, request, id):
         try:
@@ -179,10 +157,7 @@ class CarDetailView(APIView):
         serializer = CarSerializer(car)
         return Response(serializer.data)
 
-
-# =========================
-# 🔥 UPDATE CAR
-# =========================
+# Update Car
 class CarUpdateView(APIView):
     permission_classes = [IsAuthenticated, IsOwner]
 
@@ -212,7 +187,7 @@ class CarUpdateView(APIView):
         car.transmission = data.get("transmission", car.transmission)
         car.seats = data.get("seats", car.seats)
 
-        car.status = "pending"  # 🔥 re-approval
+        car.status = "pending"
         car.save()
 
         images = request.FILES.getlist("images")
@@ -229,20 +204,14 @@ class CarUpdateView(APIView):
 
         return Response({"message": "Updated (Pending approval)"})
 
-
-# =========================
-# 🔥 DELETE CAR
-# =========================
+# Delete Car
 class CarDeleteView(generics.DestroyAPIView):
     queryset = Car.objects.all()
     serializer_class = CarSerializer
     permission_classes = [IsAuthenticated, IsOwner]
     lookup_field = "id"
 
-
-# =========================
-# 🔥 SEARCH (RENTAL ONLY)
-# =========================
+# Search (Rental Only)
 @api_view(["GET"])
 def search_cars(request):
     max_price = request.GET.get("max_price")
@@ -275,10 +244,7 @@ def search_cars(request):
 
     return Response(data)
 
-
-# =========================
-# 🔥 SELL CAR (MARKETPLACE)
-# =========================
+# Sell Car (Marketplace)
 class CreateSellCarView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -301,9 +267,8 @@ class CreateSellCarView(APIView):
                 registration_number=data.get("registration_number"),
                 fuel_type=data.get("fuel_type", "petrol"),
                 transmission=data.get("transmission", "manual"),
-
                 status="pending",
-                car_type="sale"   # 🔥 FIX
+                car_type="sale"
             )
         except IntegrityError:
             return Response({"error": "Registration exists ❌"}, status=400)
@@ -322,10 +287,7 @@ class CreateSellCarView(APIView):
 
         return Response({"message": "Submitted for approval ⏳"})
 
-
-# =========================
-# 🔥 BUY PAGE (SALE ONLY)
-# =========================
+# Buy Page (Sale Only)
 class ApprovedCarsView(APIView):
     permission_classes = [AllowAny]
 
@@ -345,14 +307,11 @@ class ApprovedCarsView(APIView):
                 "location": car.location,
                 "fuel_type": car.fuel_type,
                 "description": car.description,
-
-                # 🔥 SELLER INFO
                 "seller": {
                     "id": car.owner.id,
                     "name": car.owner.username,
                     "email": car.owner.email,
                 },
-
                 "images": [
                     {"image": img.image} for img in car.images.all()
                 ]
@@ -360,9 +319,7 @@ class ApprovedCarsView(APIView):
 
         return Response(data)
 
-# =========================
-# 🔥 ADMIN - PENDING CARS
-# =========================
+# Admin - Pending Cars
 class AdminPendingCarsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -371,7 +328,6 @@ class AdminPendingCarsView(APIView):
             return Response({"error": "Unauthorized ❌"}, status=403)
 
         cars = Car.objects.filter(status="pending")
-
         data = []
 
         for car in cars:
@@ -389,10 +345,7 @@ class AdminPendingCarsView(APIView):
 
         return Response(data)
 
-
-# =========================
-# 🔥 ADMIN APPROVE / REJECT
-# =========================
+# Admin Approve / Reject
 class AdminApproveCarView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -415,36 +368,23 @@ class AdminApproveCarView(APIView):
             return Response({"error": "Invalid action"}, status=400)
 
         car.save()
-
         return Response({"message": f"Car {action}d ✅"})
-    
-import requests
-from rest_framework.views import APIView
-from rest_framework.response import Response
 
+# Chatbot View
 class ChatbotView(APIView):
     def post(self, request):
         message = request.data.get("message")
-
         try:
             res = requests.post(
                 "http://127.0.0.1:8001/chat/",
                 json={"message": message}
             )
-
             return Response(res.json())
-
         except Exception as e:
             return Response({"error": "FastAPI not working ❌"})
-        
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.db.models import Avg
-from .models import Car
 
-
+# Price Suggestion View
 class PriceSuggestionView(APIView):
-
     def post(self, request):
         brand = request.data.get("brand")
         fuel_type = request.data.get("fuel_type")
@@ -457,17 +397,14 @@ class PriceSuggestionView(APIView):
 
         if brand:
             cars = cars.filter(brand__icontains=brand)
-
         if fuel_type:
             cars = cars.filter(fuel_type=fuel_type)
-
         if seats:
             try:
                 cars = cars.filter(seats=int(seats))
             except:
                 pass
 
-        # 🚫 NO DATA CASE
         if not cars.exists():
             return Response({
                 "suggested_price": 2000,
@@ -477,8 +414,6 @@ class PriceSuggestionView(APIView):
             })
 
         avg_price = cars.aggregate(avg=Avg("price"))["avg"]
-
-        # ✅ FIX HERE (convert to float)
         avg_price = float(avg_price)
 
         return Response({
@@ -486,32 +421,8 @@ class PriceSuggestionView(APIView):
             "min": round(avg_price * 0.8, 2),
             "max": round(avg_price * 1.2, 2),
         })
-        
-import requests
 
-def get_lat_lng(location):
-    url = "https://nominatim.openstreetmap.org/search"
-    
-    params = {
-        "q": location,
-        "format": "json"
-    }
-
-    headers = {
-        "User-Agent": "car-app"  # required
-    }
-
-    response = requests.get(url, params=params, headers=headers)
-    data = response.json()
-
-    if data:
-        return float(data[0]["lat"]), float(data[0]["lon"])
-
-    return None, None
-
-
-import requests
-
+# External API Utils
 def call_fastapi_price(data):
     try:
         res = requests.post(

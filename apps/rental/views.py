@@ -19,6 +19,8 @@ from django.utils.dateparse import parse_date, parse_time
 from apps.cars.models import Car
 from .models import Booking
 
+ 
+
 
 class CreateBookingView(APIView):
     permission_classes = [IsAuthenticated]
@@ -26,18 +28,28 @@ class CreateBookingView(APIView):
     def post(self, request):
         user = request.user
 
+         #   KYC CHECk
+         
+        
+        # if not getattr(user, "is_kyc_verified", False):
+        #     return Response({
+        #         "error": "KYC verification required ❌"
+        #     }, status=403)
+
         car_id = request.data.get("car_id")
         start_date = parse_date(request.data.get("start_date"))
         end_date = parse_date(request.data.get("end_date"))
 
-        # 🕐 SAFE TIME INPUTS (FIXED)
+        # TIME INPUTS
         pickup_time_raw = request.data.get("pickup_time")
         return_time_raw = request.data.get("return_time")
 
         pickup_time = parse_time(pickup_time_raw) if pickup_time_raw else None
         return_time = parse_time(return_time_raw) if return_time_raw else None
 
-        # ❌ VALIDATION
+        # =========================
+        # ❌ VALIDATIONS
+        # =========================
         if not car_id or not start_date or not end_date:
             return Response({"error": "Missing date fields ❌"}, status=400)
 
@@ -53,7 +65,7 @@ class CreateBookingView(APIView):
         except Car.DoesNotExist:
             return Response({"error": "Car not found ❌"}, status=404)
 
-        # 🔥 CHECK OVERLAP (ONLY CONFIRMED BOOKINGS)
+        # 🔥 CHECK OVERLAP
         conflict = Booking.objects.filter(
             car=car,
             start_date__lte=end_date,
@@ -66,11 +78,15 @@ class CreateBookingView(APIView):
                 "error": "Car already booked for selected dates ❌"
             }, status=400)
 
+        # =========================
         # 💰 CALCULATE PRICE
+        # =========================
         days = (end_date - start_date).days or 1
         total_price = days * float(car.price)
 
+        # =========================
         # ✅ CREATE BOOKING
+        # =========================
         booking = Booking.objects.create(
             user=user,
             car=car,
@@ -90,9 +106,7 @@ class CreateBookingView(APIView):
             "pickup_time": str(pickup_time),
             "return_time": str(return_time)
         })
-# =========================
-# 🔥 PAYMENT SUCCESS
-# =========================
+ 
 class PaymentSuccessView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -111,9 +125,7 @@ class PaymentSuccessView(APIView):
         return Response({"message": "Booking confirmed ✅"})
 
 
-# =========================
-# 🔥 GET BOOKED DATES
-# =========================
+ 
 class CarAvailabilityView(APIView):
     permission_classes = [AllowAny]
 
@@ -135,38 +147,45 @@ class CarAvailabilityView(APIView):
             "booked_dates": data
         })
         
-# =========================
-# 🔥 MY BOOKINGS
-# =========================
+ 
 from rest_framework.permissions import IsAuthenticated
 
 class MyBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        bookings = Booking.objects.filter(user=request.user).order_by("-created_at")
+        bookings = Booking.objects.filter(
+            user=request.user
+        ).order_by("-created_at")
 
         data = []
 
         for b in bookings:
             data.append({
                 "id": b.id,
+
                 "car": {
                     "title": b.car.title,
                     "image": b.car.images.first().image if b.car.images.exists() else None
                 },
+
                 "start_date": b.start_date,
                 "end_date": b.end_date,
+
+                 
+                "pickup_time": b.pickup_time,
+                "return_time": b.return_time,
+
+              
+                "fine_amount": getattr(b, "fine_amount", 0),
+
                 "total_price": b.total_price,
                 "status": b.status,
                 "payment_status": b.payment_status,
             })
 
         return Response(data)
-    
-# =========================
-# 🔥 CANCEL BOOKING
-# =========================
+ 
 class CancelBookingView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -185,9 +204,13 @@ class CancelBookingView(APIView):
         return Response({"message": "Booking cancelled ✅"})
     
     
-# =========================
-# 🔥 SELLER BOOKINGS
-# =========================
+ 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Booking
+
+
 class SellerBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -208,7 +231,14 @@ class SellerBookingsView(APIView):
                     "name": b.user.username,
                     "email": b.user.email,
                 },
-                "car": b.car.title,
+
+              
+                "car": {
+                    "title": b.car.title,
+                    "image": b.car.images.first().image if b.car.images.exists() else None
+                },
+                # 🔥 FIX END
+
                 "start_date": b.start_date,
                 "end_date": b.end_date,
                 "status": b.status,
@@ -217,13 +247,8 @@ class SellerBookingsView(APIView):
             })
 
         return Response(data)
-    
-# =========================
-# 🔥 ADMIN BOOKINGS
-# =========================
-# =========================
-# 🔥 ADMIN BOOKINGS (READ ONLY)
-# =========================
+ #   ADMIN BOOKINGS
+ 
 class AdminBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -270,9 +295,8 @@ class AdminBookingsView(APIView):
 
         return Response(data)
     
-# =========================
-# 🔥 SELLER UPDATE BOOKING STATUS
-# =========================
+ #   SELLER UPDATE BOOKING STATUS
+  
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -292,19 +316,19 @@ class SellerUpdateBookingView(APIView):
         if request.user.role != "seller":
             return Response({"error": "Unauthorized ❌"}, status=403)
 
-        # 🔍 GET BOOKING
+        #   GET BOOKING
         try:
             booking = Booking.objects.get(id=booking_id)
         except Booking.DoesNotExist:
             return Response({"error": "Booking not found ❌"}, status=404)
 
-        # 🔐 OWNER CHECK
+        #    OWNER CHECK
         if booking.car.owner != request.user:
             return Response({"error": "Not your car ❌"}, status=403)
 
         action = request.data.get("action")
 
-        # 🎯 UPDATE STATUS
+        #  UPDATE STATUS
         if action == "confirm":
             booking.status = "confirmed"
 
@@ -319,9 +343,7 @@ class SellerUpdateBookingView(APIView):
 
         booking.save()
 
-        # =========================
-        # 🔥 REAL-TIME UPDATE
-        # =========================
+         
         channel_layer = get_channel_layer()
 
         async_to_sync(channel_layer.group_send)(
@@ -340,7 +362,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-
 class ReturnCarView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -350,26 +371,40 @@ class ReturnCarView(APIView):
         except Booking.DoesNotExist:
             return Response({"error": "Booking not found"}, status=404)
 
-        current_time = now()
-        booking.actual_return_time = current_time
+        # 🔥 SAFETY CHECK
+        if not booking.return_time:
+            return Response({
+                "error": "Return time not set ❌"
+            }, status=400)
 
-        # 🔥 Expected return datetime
+        current_time = now()
+
+        # 🔥 FIX TIMEZONE ISSUE
         expected_return = datetime.combine(
             booking.end_date,
             booking.return_time
         )
 
-        # 🔥 Calculate delay
-        delay_hours = (current_time - expected_return).total_seconds() / 3600
+        # convert to aware datetime
+        from django.utils.timezone import make_aware
+        expected_return = make_aware(expected_return)
 
-        if delay_hours > 0:
-            fine = round(delay_hours) * 250
-            booking.fine_amount = fine
+        # 🔥 CALCULATE DELAY
+        delay_seconds = (current_time - expected_return).total_seconds()
 
+        fine = 0
+
+        if delay_seconds > 0:
+            delay_hours = delay_seconds / 3600
+            fine = int(delay_hours) * 250 if delay_hours >= 1 else 250
+
+        #   SAVE
+        booking.actual_return_time = current_time
+        booking.fine_amount = fine
         booking.status = "completed"
         booking.save()
 
         return Response({
-            "message": "Car returned successfully",
-            "fine": booking.fine_amount
+            "message": "Car returned successfully ✅",
+            "fine": fine
         })

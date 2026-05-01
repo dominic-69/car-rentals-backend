@@ -33,7 +33,7 @@ class Car(models.Model):
         blank=True
     )
 
-    # ✅ KEEP location
+    #   KEEP location
     location = models.CharField(max_length=255)
 
     description = models.TextField(blank=True)
@@ -99,7 +99,7 @@ class Car(models.Model):
         db_index=True
     )
 
-    # 📍 MAP COORDINATES
+    #  MAP  
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
 
@@ -112,7 +112,7 @@ class Car(models.Model):
         return f"{self.title} - {self.registration_number}"
 
 
-# ✅ Cloudinary URL storage
+#   Cloudinary URL storage
 class CarImage(models.Model):
     car = models.ForeignKey(
         Car,

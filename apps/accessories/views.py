@@ -10,9 +10,7 @@ from .permissions import IsSeller
 import cloudinary.uploader
 
 
-# =========================
-# 🔥 CREATE ACCESSORY
-# =========================
+ 
 class CreateAccessoryView(APIView):
     permission_classes = [IsAuthenticated, IsSeller]
 
@@ -29,7 +27,7 @@ class CreateAccessoryView(APIView):
             category=data.get("category"),
         )
 
-        # 🔥 IMAGES
+        # IMAGES
         images = request.FILES.getlist("images")
 
         if len(images) > 5:
@@ -45,9 +43,7 @@ class CreateAccessoryView(APIView):
         return Response({"message": "Accessory added ✅"})
 
 
-# =========================
-# 🔥 MY ACCESSORIES (SELLER)
-# =========================
+ 
 class MyAccessoriesView(generics.ListAPIView):
     serializer_class = AccessorySerializer
     permission_classes = [IsAuthenticated, IsSeller]
@@ -55,9 +51,7 @@ class MyAccessoriesView(generics.ListAPIView):
     def get_queryset(self):
         return Accessory.objects.filter(seller=self.request.user)
 
-
-# =========================
-# 🔥 ALL ACCESSORIES (USER)
+ 
 # =========================
 class AccessoryListView(generics.ListAPIView):
     serializer_class = AccessorySerializer
@@ -70,19 +64,13 @@ class AccessoryListView(generics.ListAPIView):
             return Accessory.objects.all()
 
         return Accessory.objects.filter(is_approved=True)
-# =========================
-# 🔥 DETAIL
-# =========================
+ 
 class AccessoryDetailView(generics.RetrieveAPIView):
     queryset = Accessory.objects.all()
     serializer_class = AccessorySerializer
     lookup_field = "id"
     permission_classes = [permissions.AllowAny]
-
-
-# =========================
-# 🔥 UPDATE ACCESSORY
-# =========================
+ 
 class AccessoryUpdateView(APIView):
     permission_classes = [IsAuthenticated, IsSeller]
 
@@ -105,7 +93,7 @@ class AccessoryUpdateView(APIView):
         accessory.description = data.get("description", accessory.description)
         accessory.category = data.get("category", accessory.category)
 
-        # 🔥 REQUIRE RE-APPROVAL AFTER EDIT
+        #  REQUIRE RE-APPROVAL AFTER EDIT
         accessory.is_approved = False
 
         accessory.save()
@@ -129,12 +117,7 @@ class AccessoryUpdateView(APIView):
         return Response({"message": "Updated ✅"})
 
 
-# =========================
-# 🔥 DELETE ACCESSORY
-# =========================
- # =========================
-# 🔥 DELETE ACCESSORY
-# =========================
+ 
 class AccessoryDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -144,12 +127,12 @@ class AccessoryDeleteView(APIView):
         except Accessory.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
 
-        # ✅ ALLOW ADMIN
+        # admin alloww
         if request.user.role == "admin":
             accessory.delete()
             return Response({"message": "Deleted by admin ✅"})
 
-        # ✅ ALLOW OWNER (SELLER)
+        # ALLOW OWNER (SELLER)
         if accessory.seller == request.user:
             accessory.delete()
             return Response({"message": "Deleted ✅"})
@@ -157,9 +140,7 @@ class AccessoryDeleteView(APIView):
         return Response({"error": "Unauthorized ❌"}, status=403)
 
 
-# =========================
-# 🔥 ADMIN APPROVE
-# =========================
+# admin approve
 class ApproveAccessoryView(APIView):
     permission_classes = [IsAuthenticated]
 

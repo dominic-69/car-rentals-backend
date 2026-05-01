@@ -15,9 +15,7 @@ class IsAdmin(BasePermission):
         return request.user.is_authenticated and request.user.role == "admin"
 
 
-# ==============================
-# 🔥 SUBMIT / RESUBMIT KYC
-# ==============================
+ 
 class SubmitKYCView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -61,10 +59,7 @@ class SubmitKYCView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=400)
 
-
-# ==============================
-# 🔥 GET MY KYC
-# ==============================
+ 
 class MyKYCView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -76,10 +71,7 @@ class MyKYCView(APIView):
         except KYC.DoesNotExist:
             return Response({"message": "No KYC found"})
 
-
-# ==============================
-# 🔥 ADMIN - LIST ALL KYC
-# ==============================
+ 
 class AdminKYCListView(APIView):
     permission_classes = [IsAdmin]
 
@@ -88,10 +80,7 @@ class AdminKYCListView(APIView):
         serializer = KYCSerializer(kyc, many=True)
         return Response(serializer.data)
 
-
-# ==============================
-# ✅ APPROVE KYC
-# ==============================
+ 
 class ApproveKYCView(APIView):
     permission_classes = [IsAdmin]
 
@@ -115,9 +104,7 @@ class ApproveKYCView(APIView):
         return Response({"message": "KYC approved"})
 
 
-# ==============================
-# ❌ REJECT KYC
-# ==============================
+ 
 class RejectKYCView(APIView):
     permission_classes = [IsAdmin]
 
